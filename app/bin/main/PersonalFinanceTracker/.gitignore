@@ -1,0 +1,21 @@
+# Ignore build artifacts
+/build/
+*/build/
+.gradle/
+out/
+bin/
+
+# Ignore DB files
+*.db
+
+# IDE-specific
+*.iml
+.idea/
+.vscode/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
