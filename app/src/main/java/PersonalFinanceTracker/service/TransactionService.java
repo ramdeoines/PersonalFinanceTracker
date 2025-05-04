@@ -2,41 +2,55 @@ package PersonalFinanceTracker.service;
 
 import PersonalFinanceTracker.model.Transaction;
 import PersonalFinanceTracker.db.DatabaseManager;
+import PersonalFinanceTracker.util.DateUtils; // Optional: for consistent date parsing/formatting
 
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Service class to handle CRUD operations for Transactions.
+ * Interacts with the database via DatabaseManager.
+ */
 public class TransactionService {
 
+    // === Create ===
+
+    /**
+     * Adds a new transaction to the database.
+     */
     public static void addTransaction(Transaction transaction) {
         String sql = """
             INSERT INTO transactions(amount, category, description, date, is_recurring, recurrence)
             VALUES (?, ?, ?, ?, ?, ?)
         """;
-    
+
         try (Connection conn = DatabaseManager.connect();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-    
+
             pstmt.setDouble(1, transaction.getAmount());
             pstmt.setString(2, transaction.getCategory());
             pstmt.setString(3, transaction.getDescription());
-            pstmt.setString(4, transaction.getDate().toString());
+            pstmt.setString(4, transaction.getDate().toString()); // Optional: could use DateUtils.formatDate()
             pstmt.setInt(5, transaction.isRecurring() ? 1 : 0);
             pstmt.setString(6, transaction.getRecurrence());
-    
+
             pstmt.executeUpdate();
             System.out.println("✅ Transaction added: " + transaction);
-    
+
         } catch (SQLException e) {
             System.out.println("❌ Error adding transaction: " + e.getMessage());
         }
     }
 
+    // === Read ===
+
+    /**
+     * Retrieves all transactions from the database, ordered by date descending.
+     */
     public static List<Transaction> getAllTransactions() {
         List<Transaction> transactions = new ArrayList<>();
-
         String sql = "SELECT * FROM transactions ORDER BY date DESC";
 
         try (Connection conn = DatabaseManager.connect();
@@ -48,7 +62,7 @@ public class TransactionService {
                 double amount = rs.getDouble("amount");
                 String category = rs.getString("category");
                 String description = rs.getString("description");
-                LocalDate date = LocalDate.parse(rs.getString("date"));
+                LocalDate date = LocalDate.parse(rs.getString("date")); // Optional: could use DateUtils.parseDate()
 
                 boolean isRecurring = rs.getInt("is_recurring") == 1;
                 String recurrence = rs.getString("recurrence");
@@ -63,24 +77,29 @@ public class TransactionService {
         return transactions;
     }
 
+    // === Update ===
+
+    /**
+     * Updates an existing transaction by ID.
+     */
     public static boolean updateTransaction(Transaction updatedTransaction) {
         String sql = """
             UPDATE transactions
             SET amount = ?, category = ?, description = ?, date = ?
             WHERE id = ?
         """;
-    
+
         try (Connection conn = DatabaseManager.connect();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-    
+
             pstmt.setDouble(1, updatedTransaction.getAmount());
             pstmt.setString(2, updatedTransaction.getCategory());
             pstmt.setString(3, updatedTransaction.getDescription());
             pstmt.setString(4, updatedTransaction.getDate().toString());
             pstmt.setInt(5, updatedTransaction.getId());
-    
+
             int rowsAffected = pstmt.executeUpdate();
-    
+
             if (rowsAffected > 0) {
                 System.out.println("✅ Transaction with ID " + updatedTransaction.getId() + " updated.");
                 return true;
@@ -88,23 +107,27 @@ public class TransactionService {
                 System.out.println("⚠️ No transaction found with ID " + updatedTransaction.getId());
                 return false;
             }
-    
+
         } catch (SQLException e) {
             System.out.println("❌ Error updating transaction: " + e.getMessage());
             return false;
         }
     }
-    
 
+    // === Delete ===
+
+    /**
+     * Deletes a transaction by its ID.
+     */
     public static boolean deleteTransactionById(int id) {
         String sql = "DELETE FROM transactions WHERE id = ?";
-    
+
         try (Connection conn = DatabaseManager.connect();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-    
+
             pstmt.setInt(1, id);
             int rowsAffected = pstmt.executeUpdate();
-    
+
             if (rowsAffected > 0) {
                 System.out.println("✅ Transaction with ID " + id + " deleted.");
                 return true;
@@ -112,7 +135,7 @@ public class TransactionService {
                 System.out.println("⚠️ No transaction found with ID " + id);
                 return false;
             }
-    
+
         } catch (SQLException e) {
             System.out.println("❌ Error deleting transaction: " + e.getMessage());
             return false;

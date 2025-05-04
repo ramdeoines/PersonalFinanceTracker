@@ -1,103 +1,104 @@
 package PersonalFinanceTracker;
 
-import PersonalFinanceTracker.db.DatabaseManager;
-import PersonalFinanceTracker.model.Transaction;
-import PersonalFinanceTracker.service.ExportService;
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+
+// UI Windows
+import PersonalFinanceTracker.ui.AddTransactionForm;
+import PersonalFinanceTracker.ui.ViewTransactionsWindow;
+import PersonalFinanceTracker.ui.DeleteTransactionForm;
+import PersonalFinanceTracker.ui.EditTransactionForm;
+import PersonalFinanceTracker.ui.SearchTransactionsWindow;
+import PersonalFinanceTracker.ui.SummaryWindow;
+import PersonalFinanceTracker.ui.RecurringPreviewWindow;
+import PersonalFinanceTracker.ui.DashboardWindow;
+import PersonalFinanceTracker.ui.SettingsWindow;
+
+// Services
 import PersonalFinanceTracker.service.TransactionService;
 import PersonalFinanceTracker.service.ExportService;
-import PersonalFinanceTracker.service.SummaryService;
-import java.util.Map;
-import PersonalFinanceTracker.service.RecurrenceSimulator;
-import PersonalFinanceTracker.ui.ConsoleUI;
 
-import java.time.LocalDate;
-import java.util.List;
+/**
+ * Main class for launching the Personal Finance Tracker application.
+ */
+public class Main extends Application {
 
-public class Main {
-    public static void main(String[] args) {
-        ConsoleUI.launch();
-        System.out.println("Welcome to the Personal Finance Tracker!");
-        DatabaseManager.initializeDatabase();
+    /**
+     * Entry point for the JavaFX application.
+     *
+     * @param primaryStage the main window
+     */
+    @Override
+    public void start(Stage primaryStage) {
+        primaryStage.setTitle("Personal Finance Tracker");
 
-        // Add a new transaction
-        Transaction recurring = new Transaction(15.50, "Transport", "Metro card top-up", LocalDate.now(), true, "monthly");
-        TransactionService.addTransaction(recurring);
+        // --- Create Action Buttons ---
+        Button addButton = createButton("Add Transaction", AddTransactionForm::display);
+        Button viewButton = createButton("View All Transactions", ViewTransactionsWindow::display);
+        Button searchButton = createButton("Search Transactions", SearchTransactionsWindow::display);
+        Button deleteButton = createButton("Delete Transaction", DeleteTransactionForm::display);
+        Button editButton = createButton("Edit Transaction", EditTransactionForm::display);
+        Button summaryButton = createButton("View Summary", SummaryWindow::display);
+        Button previewButton = createButton("Preview Recurring", RecurringPreviewWindow::display);
+        Button dashboardButton = createButton("Dashboard", DashboardWindow::display);
+        Button settingsButton = createButton("Settings", SettingsWindow::display);
 
-        // Show all transactions
-        List<Transaction> all = TransactionService.getAllTransactions();
-        System.out.println("📄 All Transactions:");
-        for (Transaction t : all) {
-            System.out.println("ID " + t.getId() + ": " + t);
-        }
+        // --- Export Button with Custom Logic ---
+        Button exportButton = new Button("Export to CSV");
+        exportButton.setOnAction(e -> {
+            var transactions = TransactionService.getAllTransactions();
+            ExportService.exportToCSV(transactions, SettingsWindow.getDefaultExportFilename());
+            showAlert("Transactions exported to " + SettingsWindow.getDefaultExportFilename());
+        });
 
-        // Delete the first transaction (if there are any)
-        if (!all.isEmpty()) {
-            int idToDelete = all.get(0).getId();
-            TransactionService.deleteTransactionById(idToDelete);
-        }
+        // --- Layout Setup ---
+        VBox vbox = new VBox(10,
+            dashboardButton,
+            addButton, viewButton, searchButton,
+            deleteButton, editButton, exportButton,
+            summaryButton, previewButton,
+            settingsButton
+        );
+        vbox.setStyle("-fx-padding: 20; -fx-alignment: center;");
 
-        // Show updated list
-        List<Transaction> updated = TransactionService.getAllTransactions();
-        System.out.println("📄 Transactions After Deletion:");
-        for (Transaction t : updated) {
-            System.out.println("ID " + t.getId() + ": " + t);
-        }
+        Scene scene = new Scene(vbox, 400, 450);
+        scene.getStylesheets().add(getClass().getResource("/style/dark-theme.css").toExternalForm());
 
-        // Export to CSV
-        ExportService.exportToCSV(updated, "transactions.csv");
-
-        if (!updated.isEmpty()) {
-            Transaction toUpdate = updated.get(0); // get the most recent
-            toUpdate = new Transaction(
-                toUpdate.getId(),
-                99.99,
-                "Updated Category",
-                "Edited transaction",
-                toUpdate.getDate()
-            );
-        
-            TransactionService.updateTransaction(toUpdate);
-        }
-        
-        // Final display
-        List<Transaction> finalList = TransactionService.getAllTransactions();
-        System.out.println("📄 Transactions After Update:");
-        for (Transaction t : finalList) {
-            System.out.println("ID " + t.getId() + ": " + t);
-        }
-
-        System.out.println("📊 Summary:");
-        System.out.printf("Total spent today: $%.2f%n", SummaryService.getTotalSpentToday(finalList));
-        System.out.printf("Total spent this month: $%.2f%n", SummaryService.getTotalSpentThisMonth(finalList));
-        System.out.printf("Total spent overall: $%.2f%n", SummaryService.getTotalSpent(finalList));
-
-        System.out.println("📂 Spending by Category:");
-        Map<String, Double> categoryTotals = SummaryService.getSpendingByCategory(finalList);
-        for (String category : categoryTotals.keySet()) {
-            System.out.printf("- %s: $%.2f%n", category, categoryTotals.get(category));
-        }
-
-        System.out.println("🔍 Category Filter: 'Updated Category'");
-        List<Transaction> filtered = SummaryService.getTransactionsByCategory(finalList, "Updated Category");
-
-        for (Transaction t : filtered) {
-            System.out.println("ID " + t.getId() + ": " + t);
-        }
-
-        System.out.printf("💰 Total for 'Updated Category': $%.2f%n",
-                SummaryService.getTotalForCategory(finalList, "Updated Category"));
-
-    // Preview next 3 future instances of the first recurring transaction
-    for (Transaction t : finalList) {
-        if (t.isRecurring()) {
-            System.out.println("🔮 Future instances of: " + t);
-            List<Transaction> upcoming = RecurrenceSimulator.simulateFutureOccurrences(t, 3);
-            for (Transaction ft : upcoming) {
-                System.out.println("→ " + ft);
-            }
-            break; // just one for now
-        }
+        primaryStage.setScene(scene);
+        primaryStage.show();
     }
 
+    /**
+     * Utility method for creating a button with a label and action.
+     *
+     * @param label  the text to show on the button
+     * @param action the action to execute on click
+     * @return the created Button
+     */
+    private Button createButton(String label, Runnable action) {
+        Button button = new Button(label);
+        button.setOnAction(e -> action.run());
+        return button;
+    }
+
+    /**
+     * Displays a simple informational alert.
+     *
+     * @param message the message to show
+     */
+    private void showAlert(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, message);
+        alert.showAndWait();
+    }
+
+    /**
+     * Main method — launches the JavaFX application.
+     */
+    public static void main(String[] args) {
+        launch();
     }
 }

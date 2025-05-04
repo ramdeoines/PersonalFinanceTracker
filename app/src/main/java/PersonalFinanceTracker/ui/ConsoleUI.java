@@ -9,9 +9,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
+/**
+ * ConsoleUI provides a command-line interface for interacting with the Personal Finance Tracker.
+ * It allows users to add, view, delete, export, and summarize financial transactions.
+ */
 public class ConsoleUI {
+
     private static final Scanner scanner = new Scanner(System.in);
 
+    /**
+     * Entry point for the console-based application.
+     * Displays a menu and handles user input in a loop.
+     */
     public static void launch() {
         DatabaseManager.initializeDatabase();
 
@@ -42,34 +51,46 @@ public class ConsoleUI {
         }
     }
 
+    /**
+     * Prompts the user to enter transaction details and adds it to the system.
+     */
     private static void addTransaction() {
-        System.out.print("Amount: ");
-        double amount = Double.parseDouble(scanner.nextLine());
+        try {
+            System.out.print("Amount: ");
+            double amount = Double.parseDouble(scanner.nextLine());
 
-        System.out.print("Category: ");
-        String category = scanner.nextLine();
+            System.out.print("Category: ");
+            String category = scanner.nextLine();
 
-        System.out.print("Description: ");
-        String desc = scanner.nextLine();
+            System.out.print("Description: ");
+            String desc = scanner.nextLine();
 
-        System.out.print("Date (YYYY-MM-DD): ");
-        LocalDate date = LocalDate.parse(scanner.nextLine());
+            System.out.print("Date (YYYY-MM-DD): ");
+            LocalDate date = LocalDate.parse(scanner.nextLine());
 
-        System.out.print("Is recurring? (yes/no): ");
-        boolean isRecurring = scanner.nextLine().equalsIgnoreCase("yes");
+            System.out.print("Is recurring? (yes/no): ");
+            boolean isRecurring = scanner.nextLine().equalsIgnoreCase("yes");
 
-        String recurrence = null;
-        if (isRecurring) {
-            System.out.print("Recurrence (daily/weekly/monthly): ");
-            recurrence = scanner.nextLine();
+            String recurrence = null;
+            if (isRecurring) {
+                System.out.print("Recurrence (daily/weekly/monthly): ");
+                recurrence = scanner.nextLine();
+            }
+
+            Transaction t = new Transaction(amount, category, desc, date, isRecurring, recurrence);
+            TransactionService.addTransaction(t);
+            System.out.println("✅ Transaction added.");
+        } catch (Exception e) {
+            System.out.println("❌ Error: " + e.getMessage());
         }
-
-        Transaction t = new Transaction(amount, category, desc, date, isRecurring, recurrence);
-        TransactionService.addTransaction(t);
     }
 
+    /**
+     * Displays all transactions in the system.
+     */
     private static void viewAll() {
         List<Transaction> transactions = TransactionService.getAllTransactions();
+
         if (transactions.isEmpty()) {
             System.out.println("📭 No transactions found.");
         } else {
@@ -79,34 +100,57 @@ public class ConsoleUI {
         }
     }
 
+    /**
+     * Deletes a transaction by ID based on user input.
+     */
     private static void deleteById() {
-        System.out.print("Enter transaction ID to delete: ");
-        int id = Integer.parseInt(scanner.nextLine());
-        TransactionService.deleteTransactionById(id);
+        try {
+            System.out.print("Enter transaction ID to delete: ");
+            int id = Integer.parseInt(scanner.nextLine());
+            boolean deleted = TransactionService.deleteTransactionById(id);
+            if (deleted) {
+                System.out.println("🗑️ Transaction deleted.");
+            } else {
+                System.out.println("❌ No transaction found with that ID.");
+            }
+        } catch (Exception e) {
+            System.out.println("❌ Error: " + e.getMessage());
+        }
     }
 
+    /**
+     * Exports all transactions to a CSV file.
+     */
     private static void export() {
         ExportService.exportToCSV(TransactionService.getAllTransactions(), "transactions.csv");
+        System.out.println("📁 Transactions exported to transactions.csv");
     }
 
+    /**
+     * Displays a financial summary including totals and category-wise spending.
+     */
     private static void viewSummary() {
         List<Transaction> list = TransactionService.getAllTransactions();
 
-        System.out.printf("Total Today: $%.2f%n", SummaryService.getTotalSpentToday(list));
-        System.out.printf("Total This Month: $%.2f%n", SummaryService.getTotalSpentThisMonth(list));
-        System.out.printf("Total Overall: $%.2f%n", SummaryService.getTotalSpent(list));
+        System.out.printf("📅 Total Today: $%.2f%n", SummaryService.getTotalSpentToday(list));
+        System.out.printf("📅 Total This Month: $%.2f%n", SummaryService.getTotalSpentThisMonth(list));
+        System.out.printf("💰 Total Overall: $%.2f%n", SummaryService.getTotalSpent(list));
 
-        System.out.println("By Category:");
+        System.out.println("📊 Spending by Category:");
         for (Map.Entry<String, Double> entry : SummaryService.getSpendingByCategory(list).entrySet()) {
             System.out.printf("- %s: $%.2f%n", entry.getKey(), entry.getValue());
         }
     }
 
+    /**
+     * Previews future occurrences of recurring transactions.
+     */
     private static void previewRecurring() {
         List<Transaction> all = TransactionService.getAllTransactions();
+
         for (Transaction t : all) {
             if (t.isRecurring()) {
-                System.out.println("🔮 " + t);
+                System.out.println("🔄 " + t);
                 var preview = RecurrenceSimulator.simulateFutureOccurrences(t, 3);
                 for (Transaction ft : preview) {
                     System.out.println("→ " + ft);
